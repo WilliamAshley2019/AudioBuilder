@@ -4,6 +4,7 @@
 // ============================================================================
 #pragma once
 #include <JuceHeader.h>
+#include "AudioTimeLattice.h"
 #include <map>
 #include <vector>
 
@@ -69,6 +70,34 @@ public:
     void decimateBreakpoints(int outputIndex, int targetPoints);
     int getCurrentBreakpointCount(int outputIndex) const;
 
+    // Time lattice system
+    std::unique_ptr<AudioTimeLattice> timeLattice;
+    void initializeTimeLattice();
+
+    // Time grid settings
+    void setTimeGridPPQN(int ppqn);
+    int getTimeGridPPQN() const;
+    void setTimeGridResolution(ValueResolution resolution);
+    ValueResolution getTimeGridResolution() const;
+
+    // Audio editing operations
+    enum class EditOperation {
+        None,
+        Trim,
+        Cut,
+        Split,
+        Nudge,
+        TimeStretch,
+        Quantize,
+        Humanize,
+        DetectBeats,
+        SnapToGrid,
+        Crossfade
+    };
+
+    juce::AudioBuffer<float> performEditOperation(EditOperation op,
+        const std::vector<double>& params);
+
     juce::AudioProcessorValueTreeState params;
 
 private:
@@ -76,6 +105,10 @@ private:
     juce::AudioBuffer<float> processedAudio;
     double sourceSampleRate = 44100.0;
     juce::String sourceFileName;
+
+    // Time grid state
+    int currentPPQN = 960;
+    ValueResolution currentResolution = ValueResolution::Bit14;
 
     // Breakpoint storage: [outputIndex][points]
     std::vector<std::vector<std::pair<double, double>>> breakpointData;

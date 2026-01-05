@@ -33,6 +33,18 @@ private:
     juce::TextButton exportButton;
     juce::TextButton clearButton;
     juce::TextButton decimateButton;
+    juce::TextButton quantizeToGridButton;
+
+    // Edit operations
+    juce::ComboBox editOperationSelector;
+    juce::Label editOperationLabel;
+    juce::TextButton performEditButton;
+
+    // PPQN and resolution controls
+    juce::ComboBox ppqnSelector;
+    juce::Label ppqnLabel;
+    juce::ComboBox resolutionSelector;
+    juce::Label resolutionLabel;
 
     juce::ComboBox outputSelector;
     juce::Label outputLabel;
@@ -92,6 +104,9 @@ private:
     void drawGraphBackground(juce::Graphics& g, const juce::Rectangle<int>& area);
     void drawWaveform(juce::Graphics& g, const juce::Rectangle<int>& area);
     void drawBreakpoints(juce::Graphics& g, const juce::Rectangle<int>& area);
+
+    void quantizeBreakpointsToGrid();
+    void performSelectedEdit();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioBuilderEditor)
 };

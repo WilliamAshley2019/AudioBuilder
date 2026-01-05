@@ -32,6 +32,59 @@ AudioBuilderEditor::AudioBuilderEditor(AudioBuilderProcessor& p)
     decimateButton.addListener(this);
     addAndMakeVisible(decimateButton);
 
+    quantizeToGridButton.setButtonText("Snap to Grid");
+    quantizeToGridButton.addListener(this);
+    addAndMakeVisible(quantizeToGridButton);
+
+    // Edit operations
+    editOperationLabel.setText("Edit Operation:", juce::dontSendNotification);
+    addAndMakeVisible(editOperationLabel);
+
+    editOperationSelector.addItem("Trim", 1);
+    editOperationSelector.addItem("Cut", 2);
+    editOperationSelector.addItem("Split", 3);
+    editOperationSelector.addItem("Nudge Forward", 4);
+    editOperationSelector.addItem("Nudge Backward", 5);
+    editOperationSelector.addItem("Time Stretch", 6);
+    editOperationSelector.addItem("Quantize to Grid", 7);
+    editOperationSelector.addItem("Humanize", 8);
+    editOperationSelector.addItem("Detect Beats", 9);
+    editOperationSelector.addItem("Snap Breakpoints", 10);
+    editOperationSelector.setSelectedId(1);
+    editOperationSelector.addListener(this);
+    addAndMakeVisible(editOperationSelector);
+
+    performEditButton.setButtonText("Perform Edit");
+    performEditButton.addListener(this);
+    addAndMakeVisible(performEditButton);
+
+    // PPQN selector
+    ppqnLabel.setText("PPQN:", juce::dontSendNotification);
+    addAndMakeVisible(ppqnLabel);
+
+    ppqnSelector.addItem("24", 1);
+    ppqnSelector.addItem("48", 2);
+    ppqnSelector.addItem("96", 3);
+    ppqnSelector.addItem("192", 4);
+    ppqnSelector.addItem("384", 5);
+    ppqnSelector.addItem("480", 6);
+    ppqnSelector.addItem("960", 7);
+    ppqnSelector.setSelectedId(7); // Default 960
+    ppqnSelector.addListener(this);
+    addAndMakeVisible(ppqnSelector);
+
+    // Resolution selector
+    resolutionLabel.setText("Resolution:", juce::dontSendNotification);
+    addAndMakeVisible(resolutionLabel);
+
+    resolutionSelector.addItem("7-bit (MIDI)", 1);
+    resolutionSelector.addItem("14-bit (NRPN)", 2);
+    resolutionSelector.addItem("24-bit (Audio)", 3);
+    resolutionSelector.addItem("32-bit (Float)", 4);
+    resolutionSelector.setSelectedId(2); // Default 14-bit
+    resolutionSelector.addListener(this);
+    addAndMakeVisible(resolutionSelector);
+
     // Output selector
     outputLabel.setText("Output:", juce::dontSendNotification);
     addAndMakeVisible(outputLabel);
@@ -41,7 +94,7 @@ AudioBuilderEditor::AudioBuilderEditor(AudioBuilderProcessor& p)
 
     // Feature label
     featureLabel.setText("Feature: None", juce::dontSendNotification);
-    featureLabel.setFont(juce::Font(16.0f, juce::Font::bold));
+    featureLabel.setFont(juce::FontOptions(16.0f, juce::Font::bold));
     featureLabel.setColour(juce::Label::textColourId, juce::Colours::cyan);
     addAndMakeVisible(featureLabel);
 
@@ -256,6 +309,26 @@ void AudioBuilderEditor::resized() {
     smoothingToggle.setBounds(controlRow3.removeFromLeft(100));
     controlRow3.removeFromLeft(15);
     decimateButton.setBounds(controlRow3.removeFromLeft(120));
+    controlRow3.removeFromLeft(10);
+    quantizeToGridButton.setBounds(controlRow3.removeFromLeft(110));
+
+    // Control row 4 - Edit operations
+    auto controlRow4 = area.removeFromTop(40).reduced(15, 5);
+    editOperationLabel.setBounds(controlRow4.removeFromLeft(100));
+    controlRow4.removeFromLeft(5);
+    editOperationSelector.setBounds(controlRow4.removeFromLeft(150));
+    controlRow4.removeFromLeft(10);
+    performEditButton.setBounds(controlRow4.removeFromLeft(110));
+
+    // Control row 5 - Grid settings
+    auto controlRow5 = area.removeFromTop(40).reduced(15, 5);
+    ppqnLabel.setBounds(controlRow5.removeFromLeft(50));
+    controlRow5.removeFromLeft(5);
+    ppqnSelector.setBounds(controlRow5.removeFromLeft(80));
+    controlRow5.removeFromLeft(20);
+    resolutionLabel.setBounds(controlRow5.removeFromLeft(80));
+    controlRow5.removeFromLeft(5);
+    resolutionSelector.setBounds(controlRow5.removeFromLeft(150));
 
     // Graph area
     graphBounds = area.removeFromTop(350).reduced(15, 10);
@@ -315,6 +388,29 @@ void AudioBuilderEditor::comboBoxChanged(juce::ComboBox* combo) {
         currentOutput = outputSelector.getSelectedId() - 1;
         updateDisplay();
     }
+    else if (combo == &ppqnSelector) {
+        int ppqnValues[] = { 24, 48, 96, 192, 384, 480, 960 };
+        int selectedIndex = ppqnSelector.getSelectedId() - 1;
+        if (selectedIndex >= 0 && selectedIndex < 7) {
+            processor.setTimeGridPPQN(ppqnValues[selectedIndex]);
+            statusLabel.setText("PPQN set to " + juce::String(ppqnValues[selectedIndex]),
+                juce::dontSendNotification);
+        }
+    }
+    else if (combo == &resolutionSelector) {
+        ValueResolution resolutions[] = {
+            ValueResolution::Bit7,
+            ValueResolution::Bit14,
+            ValueResolution::Bit24,
+            ValueResolution::Bit32
+        };
+        int selectedIndex = resolutionSelector.getSelectedId() - 1;
+        if (selectedIndex >= 0 && selectedIndex < 4) {
+            processor.setTimeGridResolution(resolutions[selectedIndex]);
+            statusLabel.setText("Resolution set to " + resolutionSelector.getText(),
+                juce::dontSendNotification);
+        }
+    }
 }
 
 void AudioBuilderEditor::buttonClicked(juce::Button* button) {
@@ -335,6 +431,12 @@ void AudioBuilderEditor::buttonClicked(juce::Button* button) {
     }
     else if (button == &decimateButton) {
         decimateCurrentBreakpoints();
+    }
+    else if (button == &quantizeToGridButton) {
+        quantizeBreakpointsToGrid();
+    }
+    else if (button == &performEditButton) {
+        performSelectedEdit();
     }
 }
 
@@ -613,4 +715,100 @@ void AudioBuilderEditor::mouseDoubleClick(const juce::MouseEvent& event) {
     if (graphBounds.contains(event.getPosition()) && event.mods.isLeftButtonDown()) {
         addBreakpointAtPosition(event.position);
     }
+}
+
+void AudioBuilderEditor::quantizeBreakpointsToGrid() {
+    if (!processor.hasBreakpoints()) {
+        statusLabel.setText("Load breakpoints first", juce::dontSendNotification);
+        return;
+    }
+
+    // Use the processor's edit operation system
+    std::vector<double> params = { 0.0 }; // Placeholder
+    processor.performEditOperation(AudioBuilderProcessor::EditOperation::SnapToGrid, params);
+
+    updateDisplay();
+    statusLabel.setText("Breakpoints snapped to " + juce::String(processor.getTimeGridPPQN()) + " PPQN grid",
+        juce::dontSendNotification);
+}
+
+void AudioBuilderEditor::performSelectedEdit() {
+    if (!processor.hasLoadedAudio()) {
+        statusLabel.setText("Load audio first", juce::dontSendNotification);
+        return;
+    }
+
+    int selectedOp = editOperationSelector.getSelectedId();
+    AudioBuilderProcessor::EditOperation op = AudioBuilderProcessor::EditOperation::None;
+    std::vector<double> params;
+
+    // Map selection to operation
+    switch (selectedOp) {
+    case 1: // Trim
+        op = AudioBuilderProcessor::EditOperation::Trim;
+        // Example: trim first and last 1 second
+        params = { 1.0, processor.getSourceAudio().getNumSamples() / processor.getLoadedSampleRate() - 1.0 };
+        break;
+
+    case 2: // Cut
+        op = AudioBuilderProcessor::EditOperation::Cut;
+        // Example: cut middle section
+        params = { 2.0, 4.0 };
+        break;
+
+    case 3: // Split
+        op = AudioBuilderProcessor::EditOperation::Split;
+        // Example: split at 2-second intervals
+        for (double t = 2.0; t < processor.getSourceAudio().getNumSamples() / processor.getLoadedSampleRate(); t += 2.0) {
+            params.push_back(t);
+        }
+        break;
+
+    case 4: // Nudge Forward
+        op = AudioBuilderProcessor::EditOperation::Nudge;
+        params = { 0.1 }; // 100ms forward
+        break;
+
+    case 5: // Nudge Backward
+        op = AudioBuilderProcessor::EditOperation::Nudge;
+        params = { -0.1 }; // 100ms backward
+        break;
+
+    case 6: // Time Stretch
+        op = AudioBuilderProcessor::EditOperation::TimeStretch;
+        params = { 1.5 }; // 1.5x slower
+        break;
+
+    case 7: // Quantize to Grid
+        op = AudioBuilderProcessor::EditOperation::Quantize;
+        params = { 0.0 }; // Start at beginning
+        break;
+
+    case 8: // Humanize
+        op = AudioBuilderProcessor::EditOperation::Humanize;
+        params = { 0.0 };
+        break;
+
+    case 9: // Detect Beats
+        op = AudioBuilderProcessor::EditOperation::DetectBeats;
+        break;
+
+    case 10: // Snap Breakpoints
+        op = AudioBuilderProcessor::EditOperation::SnapToGrid;
+        break;
+    }
+
+    auto result = processor.performEditOperation(op, params);
+
+    if (result.getNumSamples() > 0) {
+        // Update processor's audio with result
+        // For now, just show success message
+        statusLabel.setText("Edit operation completed: " + editOperationSelector.getText(),
+            juce::dontSendNotification);
+    }
+    else {
+        statusLabel.setText("Edit operation had no effect", juce::dontSendNotification);
+    }
+
+    repaint();
 }

@@ -19,9 +19,22 @@ AudioBuilderProcessor::AudioBuilderProcessor()
             juce::ParameterID{"smoothing", 1},
             "Smoothing",
             true
+        ),
+        std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"ppqn", 1},
+            "PPQN Resolution",
+            juce::StringArray{"24", "48", "96", "192", "384", "480", "960"},
+            6  // Default to 960
+        ),
+        std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"valueres", 1},
+            "Value Resolution",
+            juce::StringArray{"7-bit (MIDI CC)", "14-bit (NRPN)", "24-bit (Audio)", "32-bit (Float)"},
+            1  // Default to 14-bit
         )
         })
 {
+    initializeTimeLattice();
 }
 
 AudioBuilderProcessor::~AudioBuilderProcessor() {}
@@ -320,20 +333,20 @@ void AudioBuilderProcessor::exportProcessedAudio(const juce::File& file) {
     if (processedAudio.getNumSamples() == 0) return;
 
     juce::WavAudioFormat wavFormat;
+
+    // Create output stream
     std::unique_ptr<juce::FileOutputStream> fileStream(file.createOutputStream());
 
-    if (fileStream != nullptr) {
-        std::unique_ptr<juce::AudioFormatWriter> writer(
-            wavFormat.createWriterFor(fileStream.get(),
-                sourceSampleRate,
-                processedAudio.getNumChannels(),
-                24, // 24-bit
-                {},
-                0));
-
-        if (writer != nullptr) {
-            fileStream.release();
+    if (fileStream) {
+        // Create writer with parameters
+        if (auto writer = wavFormat.createWriterFor(fileStream.release(), // Note: release() transfers ownership
+            sourceSampleRate,
+            processedAudio.getNumChannels(),
+            24,
+            juce::StringPairArray(), // empty metadata
+            0)) {
             writer->writeFromAudioSampleBuffer(processedAudio, 0, processedAudio.getNumSamples());
+            delete writer; // Clean up the writer
         }
     }
 }
@@ -357,4 +370,54 @@ juce::AudioProcessorEditor* AudioBuilderProcessor::createEditor() {
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
     return new AudioBuilderProcessor();
+}
+
+juce::AudioBuffer<float> AudioBuilderProcessor::performEditOperation(EditOperation op,
+    const std::vector<double>& operationParams) {
+
+    // Return empty buffer for now - implement actual operations later
+    juce::AudioBuffer<float> result;
+
+    switch (op) {
+    case EditOperation::Trim:
+    case EditOperation::Cut:
+    case EditOperation::Split:
+    case EditOperation::Nudge:
+    case EditOperation::TimeStretch:
+    case EditOperation::Quantize:
+    case EditOperation::Humanize:
+    case EditOperation::DetectBeats:
+    case EditOperation::SnapToGrid:
+    case EditOperation::Crossfade:
+        // Placeholder - implement these operations
+        break;
+    case EditOperation::None:
+    default:
+        break;
+    }
+
+    return result;
+}
+
+void AudioBuilderProcessor::initializeTimeLattice() {
+    timeLattice = std::make_unique<AudioTimeLattice>(currentPPQN, sourceSampleRate);
+}
+
+void AudioBuilderProcessor::setTimeGridPPQN(int ppqn) {
+    currentPPQN = ppqn;
+    if (timeLattice) {
+        timeLattice->setPPQN(ppqn);
+    }
+}
+
+int AudioBuilderProcessor::getTimeGridPPQN() const {
+    return currentPPQN;
+}
+
+void AudioBuilderProcessor::setTimeGridResolution(ValueResolution resolution) {
+    currentResolution = resolution;
+}
+
+ValueResolution AudioBuilderProcessor::getTimeGridResolution() const {
+    return currentResolution;
 }
