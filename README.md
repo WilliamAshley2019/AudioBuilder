@@ -1,4 +1,4 @@
-I've started to try to add "snapping" via creation of a lower needs timeing grid.
+I've started to try to add "snapping" via creation of a lower needs timeing grid. There are still a few question in my head specifically how I want to handle possible dataloss etc.. in my head this was more of a dither recognition issue but I havn't really tested it out pratically yet.
 # AudioTimeLattice - Usage Guide
 
 ## Overview
