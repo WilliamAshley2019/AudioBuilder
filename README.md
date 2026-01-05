@@ -1,6 +1,6 @@
 I've started to try to add "snapping" via creation of a lower needs timeing grid. There are still a few question in my head specifically how I want to handle possible dataloss etc.. in my head this was more of a dither recognition issue but I havn't really tested it out pratically yet.
 
-AUDIOBUILDERTIME.vst3  is the current source, I've kept the old source. All the functions have not been implemented yet but the new plugin does load, it is being tested and likely still buggy. 
+AUDIOBUILDERTIME.vst3  is the current source, I've kept the old source for AudioBuilder.vst the a little more basic version that only used breakpoints at very high resolutions. All the functions have not been implemented yet but the new plugin does load, it is being tested and likely still buggy. 
 This new version allows to reduce points to time grid points. And should make it easier to implement edit functions. The builder tool is sort of conceptualized as a quick way to perform edits towave files
 that align to specific timing structures such as specific PPQ settings or resolutions, apply slice points for making break points for things like drum loops and editing wav meta data for specific use cases.
 AudioBuilderTime  builds but not all the functions have been done. I have put them as seperate .h and .cpp files so the time coding can be recycled in other stuff. As I am hoping to get this audio time
