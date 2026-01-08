@@ -1,7 +1,7 @@
 Update January 8th 2025 - I've merged deconstructor and builder into "Workshop" the idea is to allow both analysis and extraction of audio characteristics as well as the ability to apply them all in the same app/plugin.  Things are still very experimental and I need to implement the edit functions. The idea overall is to make a special editing tool that may be able to pull data from wav files that that normally
 may not be played with still very primitive but I have an idea for it in my head. For example edit wave file based on its characteristics or apply characteristics of one wave file on another, as well as perform
 edit functions but editor is still not really built out. 
-
+I didn't want to start another repository so I just carried workshop over as a continuation of builder I will possibly rename builder to workshop at some point in the future but since the editor functions are not built out yet it may undergo more project naming between now and then, currently it has changed from builder to workshop. The reason for three sources here is the original milestone for builder, the addition of time functions to builder, and now workshop which is the plain "source file"  workshop is the most current version. 
 
 
 
