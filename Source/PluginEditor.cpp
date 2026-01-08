@@ -1,64 +1,110 @@
 // ============================================================================
-// AudioBuilder - PluginEditor.cpp
+// Audio Workshop - PluginEditor.cpp
 // ============================================================================
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 
-AudioBuilderEditor::AudioBuilderEditor(AudioBuilderProcessor& p)
+AudioWorkshopEditor::AudioWorkshopEditor(AudioWorkshopProcessor& p)
     : AudioProcessorEditor(&p), processor(p) {
 
-    // Buttons
-    loadAudioButton.setButtonText("Load Audio");
-    loadAudioButton.addListener(this);
-    addAndMakeVisible(loadAudioButton);
+    setSize(900, 800);
 
-    loadBreakpointsButton.setButtonText("Load Breakpoints");
-    loadBreakpointsButton.addListener(this);
-    addAndMakeVisible(loadBreakpointsButton);
+    // ========================================================================
+    // SOURCE AUDIO SECTION
+    // ========================================================================
 
-    applyButton.setButtonText("Apply");
-    applyButton.addListener(this);
-    addAndMakeVisible(applyButton);
+    loadSourceButton.setButtonText("Load Source Audio");
+    loadSourceButton.addListener(this);
+    addAndMakeVisible(loadSourceButton);
 
-    exportButton.setButtonText("Export WAV");
-    exportButton.addListener(this);
-    addAndMakeVisible(exportButton);
+    sourceInfoLabel.setText("Source: None", juce::dontSendNotification);
+    sourceInfoLabel.setColour(juce::Label::textColourId, juce::Colours::lightblue);
+    addAndMakeVisible(sourceInfoLabel);
 
-    clearButton.setButtonText("Clear");
-    clearButton.addListener(this);
-    addAndMakeVisible(clearButton);
+    // ========================================================================
+    // TARGET AUDIO SECTION
+    // ========================================================================
 
-    decimateButton.setButtonText("Reduce Points");
-    decimateButton.addListener(this);
-    addAndMakeVisible(decimateButton);
+    loadTargetButton.setButtonText("Load Target Audio");
+    loadTargetButton.addListener(this);
+    addAndMakeVisible(loadTargetButton);
 
-    quantizeToGridButton.setButtonText("Snap to Grid");
-    quantizeToGridButton.addListener(this);
-    addAndMakeVisible(quantizeToGridButton);
+    targetInfoLabel.setText("Target: None", juce::dontSendNotification);
+    targetInfoLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
+    addAndMakeVisible(targetInfoLabel);
 
-    // Edit operations
-    editOperationLabel.setText("Edit Operation:", juce::dontSendNotification);
-    addAndMakeVisible(editOperationLabel);
+    // ========================================================================
+    // FEATURE EXTRACTION CONTROLS
+    // ========================================================================
 
-    editOperationSelector.addItem("Trim", 1);
-    editOperationSelector.addItem("Cut", 2);
-    editOperationSelector.addItem("Split", 3);
-    editOperationSelector.addItem("Nudge Forward", 4);
-    editOperationSelector.addItem("Nudge Backward", 5);
-    editOperationSelector.addItem("Time Stretch", 6);
-    editOperationSelector.addItem("Quantize to Grid", 7);
-    editOperationSelector.addItem("Humanize", 8);
-    editOperationSelector.addItem("Detect Beats", 9);
-    editOperationSelector.addItem("Snap Breakpoints", 10);
-    editOperationSelector.setSelectedId(1);
-    editOperationSelector.addListener(this);
-    addAndMakeVisible(editOperationSelector);
+    featureLabel.setText("Feature:", juce::dontSendNotification);
+    addAndMakeVisible(featureLabel);
 
-    performEditButton.setButtonText("Perform Edit");
-    performEditButton.addListener(this);
-    addAndMakeVisible(performEditButton);
+    auto features = processor.getAvailableFeatures();
+    for (const auto& feature : features) {
+        featureSelector.addItem(feature, featureSelector.getNumItems() + 1);
+    }
+    featureSelector.setSelectedId(1);
+    featureSelector.addListener(this);
+    addAndMakeVisible(featureSelector);
 
-    // PPQN selector
+    outputLabel.setText("Output:", juce::dontSendNotification);
+    addAndMakeVisible(outputLabel);
+
+    outputSelector.addListener(this);
+    addAndMakeVisible(outputSelector);
+
+    extractButton.setButtonText("Extract");
+    extractButton.addListener(this);
+    addAndMakeVisible(extractButton);
+
+    extractAllButton.setButtonText("Extract All");
+    extractAllButton.addListener(this);
+    addAndMakeVisible(extractAllButton);
+
+    extractADSREnvelopeButton.setButtonText("Extract ADSR");
+    extractADSREnvelopeButton.addListener(this);
+    addAndMakeVisible(extractADSREnvelopeButton);
+
+    windowSizeLabel.setText("Window:", juce::dontSendNotification);
+    addAndMakeVisible(windowSizeLabel);
+
+    windowSizeSlider.setRange(1.0, 100.0, 0.1);
+    windowSizeSlider.setValue(15.0);
+    windowSizeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
+    windowSizeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    windowSizeSlider.addListener(this);
+    addAndMakeVisible(windowSizeSlider);
+
+    hopSizeLabel.setText("Hop:", juce::dontSendNotification);
+    addAndMakeVisible(hopSizeLabel);
+
+    hopSizeSlider.setRange(10.0, 90.0, 1.0);
+    hopSizeSlider.setValue(50.0);
+    hopSizeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
+    hopSizeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    hopSizeSlider.addListener(this);
+    addAndMakeVisible(hopSizeSlider);
+
+    normalizeToggle.setButtonText("Normalize");
+    normalizeToggle.setToggleState(true, juce::dontSendNotification);
+    addAndMakeVisible(normalizeToggle);
+
+    // ========================================================================
+    // BREAKPOINT EDITOR CONTROLS
+    // ========================================================================
+
+    reducePointsButton.setButtonText("Reduce Points");
+    reducePointsButton.addListener(this);
+    addAndMakeVisible(reducePointsButton);
+
+    breakpointCountLabel.setText("Points: 0", juce::dontSendNotification);
+    addAndMakeVisible(breakpointCountLabel);
+
+    // ========================================================================
+    // TIME LATTICE CONTROLS
+    // ========================================================================
+
     ppqnLabel.setText("PPQN:", juce::dontSendNotification);
     addAndMakeVisible(ppqnLabel);
 
@@ -69,11 +115,10 @@ AudioBuilderEditor::AudioBuilderEditor(AudioBuilderProcessor& p)
     ppqnSelector.addItem("384", 5);
     ppqnSelector.addItem("480", 6);
     ppqnSelector.addItem("960", 7);
-    ppqnSelector.setSelectedId(7); // Default 960
+    ppqnSelector.setSelectedId(7);
     ppqnSelector.addListener(this);
     addAndMakeVisible(ppqnSelector);
 
-    // Resolution selector
     resolutionLabel.setText("Resolution:", juce::dontSendNotification);
     addAndMakeVisible(resolutionLabel);
 
@@ -81,85 +126,314 @@ AudioBuilderEditor::AudioBuilderEditor(AudioBuilderProcessor& p)
     resolutionSelector.addItem("14-bit (NRPN)", 2);
     resolutionSelector.addItem("24-bit (Audio)", 3);
     resolutionSelector.addItem("32-bit (Float)", 4);
-    resolutionSelector.setSelectedId(2); // Default 14-bit
+    resolutionSelector.setSelectedId(2);
     resolutionSelector.addListener(this);
     addAndMakeVisible(resolutionSelector);
 
-    // Output selector
-    outputLabel.setText("Output:", juce::dontSendNotification);
-    addAndMakeVisible(outputLabel);
+    tempoLabel.setText("Tempo:", juce::dontSendNotification);
+    addAndMakeVisible(tempoLabel);
 
-    outputSelector.addListener(this);
-    addAndMakeVisible(outputSelector);
+    tempoSlider.setRange(60.0, 200.0, 1.0);
+    tempoSlider.setValue(120.0);
+    tempoSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
+    tempoSlider.addListener(this);
+    addAndMakeVisible(tempoSlider);
 
-    // Feature label
-    featureLabel.setText("Feature: None", juce::dontSendNotification);
-    featureLabel.setFont(juce::FontOptions(16.0f, juce::Font::bold));
-    featureLabel.setColour(juce::Label::textColourId, juce::Colours::cyan);
-    addAndMakeVisible(featureLabel);
+    quantizeToGridButton.setButtonText("Snap to Grid");
+    quantizeToGridButton.addListener(this);
+    addAndMakeVisible(quantizeToGridButton);
 
-    // Intensity slider
+    snapMarkersButton.setButtonText("Snap Markers");
+    snapMarkersButton.addListener(this);
+    addAndMakeVisible(snapMarkersButton);
+
+    // ========================================================================
+    // EDIT OPERATIONS
+    // ========================================================================
+
+    editOperationLabel.setText("Edit:", juce::dontSendNotification);
+    addAndMakeVisible(editOperationLabel);
+
+    editOperationSelector.addItem("Remove Silence", 1);
+    editOperationSelector.addItem("Split by Beats", 2);
+    editOperationSelector.addItem("Isolate Transients", 3);
+    editOperationSelector.addItem("Time Stretch", 4);
+    editOperationSelector.addItem("Quantize Audio", 5);
+    editOperationSelector.addItem("Humanize", 6);
+    editOperationSelector.setSelectedId(1);
+    editOperationSelector.addListener(this);
+    addAndMakeVisible(editOperationSelector);
+
+    performEditButton.setButtonText("Perform Edit");
+    performEditButton.addListener(this);
+    addAndMakeVisible(performEditButton);
+
+    saveBreakpointsButton.setButtonText("Save Breakpoints");
+    saveBreakpointsButton.addListener(this);
+    addAndMakeVisible(saveBreakpointsButton);
+
+    loadBreakpointsButton.setButtonText("Load Breakpoints");
+    loadBreakpointsButton.addListener(this);
+    addAndMakeVisible(loadBreakpointsButton);
+
+    // ========================================================================
+    // APPLICATION CONTROLS
+    // ========================================================================
+
     intensityLabel.setText("Intensity:", juce::dontSendNotification);
     addAndMakeVisible(intensityLabel);
 
     intensitySlider.setRange(0.0, 2.0, 0.01);
     intensitySlider.setValue(1.0);
-    intensitySlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 24);
+    intensitySlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
     intensitySlider.setSliderStyle(juce::Slider::LinearHorizontal);
     intensitySlider.addListener(this);
     addAndMakeVisible(intensitySlider);
 
-    // Smoothing toggle
     smoothingToggle.setButtonText("Smoothing");
     smoothingToggle.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(smoothingToggle);
 
-    // Info labels
-    infoLabel.setText("Load audio and breakpoint files to begin", juce::dontSendNotification);
-    infoLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(infoLabel);
+    applyButton.setButtonText("Apply to Target");
+    applyButton.addListener(this);
+    addAndMakeVisible(applyButton);
+
+    exportBreakpointsButton.setButtonText("Export Breakpoints");
+    exportBreakpointsButton.addListener(this);
+    addAndMakeVisible(exportBreakpointsButton);
+
+    exportAudioButton.setButtonText("Export Audio");
+    exportAudioButton.addListener(this);
+    addAndMakeVisible(exportAudioButton);
+
+    clearAllButton.setButtonText("Clear All");
+    clearAllButton.addListener(this);
+    addAndMakeVisible(clearAllButton);
+
+    // ========================================================================
+    // STATUS LABELS
+    // ========================================================================
 
     statusLabel.setText("Ready", juce::dontSendNotification);
-    statusLabel.setJustificationType(juce::Justification::centred);
+    statusLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(statusLabel);
 
-    setSize(900, 700);
+    extractionStatusLabel.setText("No features extracted", juce::dontSendNotification);
+    extractionStatusLabel.setColour(juce::Label::textColourId, juce::Colours::grey);
+    addAndMakeVisible(extractionStatusLabel);
+
+    applicationStatusLabel.setText("No audio processed", juce::dontSendNotification);
+    applicationStatusLabel.setColour(juce::Label::textColourId, juce::Colours::grey);
+    addAndMakeVisible(applicationStatusLabel);
+
     startTimerHz(30);
 }
 
-AudioBuilderEditor::~AudioBuilderEditor() {
+AudioWorkshopEditor::~AudioWorkshopEditor() {
     stopTimer();
 }
 
-void AudioBuilderEditor::paint(juce::Graphics& g) {
+void AudioWorkshopEditor::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour(0xff1a1a1a));
 
     // Title
     g.setColour(juce::Colours::white);
-    g.setFont(24.0f);
-    g.drawText("Audio Builder", getLocalBounds().removeFromTop(50), juce::Justification::centred);
+    g.setFont(juce::FontOptions(24.0f, juce::Font::bold));
+    g.drawText("Audio Workshop", getLocalBounds().removeFromTop(40),
+        juce::Justification::centred);
 
-    // Graph area
-    graphBounds = getLocalBounds().withTrimmedTop(180).withHeight(350).reduced(15, 10);
-    drawGraphBackground(g, graphBounds);
-
-    if (processor.hasLoadedAudio()) {
-        drawWaveform(g, graphBounds);
+    // Draw source waveform
+    if (processor.hasSourceAudio()) {
+        drawSourceWaveform(g, sourceWaveformBounds);
     }
 
+    // Draw target waveform
+    if (processor.hasTargetAudio()) {
+        drawTargetWaveform(g, targetWaveformBounds);
+    }
+
+    // Draw breakpoint graph
+    drawGraphBackground(g, breakpointGraphBounds);
     if (!displayedBreakpoints.empty()) {
-        drawBreakpoints(g, graphBounds);
+        drawBreakpoints(g, breakpointGraphBounds);
     }
 }
 
-void AudioBuilderEditor::drawGraphBackground(juce::Graphics& g, const juce::Rectangle<int>& area) {
+void AudioWorkshopEditor::resized() {
+    auto area = getLocalBounds();
+    area.removeFromTop(40); // Remove title area
+
+    // ========================================================================
+    // TOP ROW: Dual Audio System
+    // ========================================================================
+    auto topRow = area.removeFromTop(120);
+    auto sourceCol = topRow.removeFromLeft(getWidth() / 2).reduced(5);
+    auto targetCol = topRow.reduced(5);
+
+    loadSourceButton.setBounds(sourceCol.removeFromTop(30));
+    sourceInfoLabel.setBounds(sourceCol.removeFromTop(25));
+    sourceWaveformBounds = sourceCol.reduced(2);
+
+    loadTargetButton.setBounds(targetCol.removeFromTop(30));
+    targetInfoLabel.setBounds(targetCol.removeFromTop(25));
+    targetWaveformBounds = targetCol.reduced(2);
+
+    // ========================================================================
+    // FEATURE EXTRACTION ROW
+    // ========================================================================
+    auto featureRow = area.removeFromTop(40).reduced(5);
+    featureLabel.setBounds(featureRow.removeFromLeft(60));
+    featureSelector.setBounds(featureRow.removeFromLeft(150));
+    featureRow.removeFromLeft(10);
+    outputLabel.setBounds(featureRow.removeFromLeft(60));
+    outputSelector.setBounds(featureRow.removeFromLeft(120));
+    featureRow.removeFromLeft(10);
+    extractButton.setBounds(featureRow.removeFromLeft(80));
+    extractAllButton.setBounds(featureRow.removeFromLeft(90));
+    extractADSREnvelopeButton.setBounds(featureRow.removeFromLeft(100));
+
+    // ========================================================================
+    // EXTRACTION SETTINGS ROW
+    // ========================================================================
+    auto settingsRow = area.removeFromTop(40).reduced(5);
+    windowSizeLabel.setBounds(settingsRow.removeFromLeft(60));
+    windowSizeSlider.setBounds(settingsRow.removeFromLeft(120));
+    settingsRow.removeFromLeft(10);
+    hopSizeLabel.setBounds(settingsRow.removeFromLeft(40));
+    hopSizeSlider.setBounds(settingsRow.removeFromLeft(120));
+    settingsRow.removeFromLeft(10);
+    normalizeToggle.setBounds(settingsRow.removeFromLeft(100));
+
+    // ========================================================================
+    // BREAKPOINT GRAPH AREA
+    // ========================================================================
+    breakpointGraphBounds = area.removeFromTop(250).reduced(10, 5);
+
+    // ========================================================================
+    // BREAKPOINT CONTROLS ROW
+    // ========================================================================
+    auto breakpointRow = area.removeFromTop(35).reduced(5);
+    breakpointCountLabel.setBounds(breakpointRow.removeFromLeft(100));
+    reducePointsButton.setBounds(breakpointRow.removeFromLeft(120));
+
+    // ========================================================================
+    // TIME LATTICE ROW
+    // ========================================================================
+    auto latticeRow = area.removeFromTop(40).reduced(5);
+    ppqnLabel.setBounds(latticeRow.removeFromLeft(50));
+    ppqnSelector.setBounds(latticeRow.removeFromLeft(80));
+    latticeRow.removeFromLeft(10);
+    resolutionLabel.setBounds(latticeRow.removeFromLeft(80));
+    resolutionSelector.setBounds(latticeRow.removeFromLeft(120));
+    latticeRow.removeFromLeft(10);
+    tempoLabel.setBounds(latticeRow.removeFromLeft(50));
+    tempoSlider.setBounds(latticeRow.removeFromLeft(100));
+    latticeRow.removeFromLeft(10);
+    quantizeToGridButton.setBounds(latticeRow.removeFromLeft(110));
+    snapMarkersButton.setBounds(latticeRow.removeFromLeft(110));
+
+    // ========================================================================
+    // EDIT OPERATIONS ROW
+    // ========================================================================
+    auto editRow = area.removeFromTop(40).reduced(5);
+    editOperationLabel.setBounds(editRow.removeFromLeft(40));
+    editOperationSelector.setBounds(editRow.removeFromLeft(150));
+    editRow.removeFromLeft(10);
+    performEditButton.setBounds(editRow.removeFromLeft(110));
+    editRow.removeFromLeft(10);
+    saveBreakpointsButton.setBounds(editRow.removeFromLeft(130));
+    loadBreakpointsButton.setBounds(editRow.removeFromLeft(130));
+
+    // ========================================================================
+    // APPLICATION ROW
+    // ========================================================================
+    auto appRow = area.removeFromTop(40).reduced(5);
+    intensityLabel.setBounds(appRow.removeFromLeft(70));
+    intensitySlider.setBounds(appRow.removeFromLeft(200));
+    appRow.removeFromLeft(10);
+    smoothingToggle.setBounds(appRow.removeFromLeft(100));
+    appRow.removeFromLeft(10);
+    applyButton.setBounds(appRow.removeFromLeft(120));
+    appRow.removeFromLeft(10);
+    exportBreakpointsButton.setBounds(appRow.removeFromLeft(140));
+    exportAudioButton.setBounds(appRow.removeFromLeft(110));
+
+    // ========================================================================
+    // CLEAR ROW
+    // ========================================================================
+    auto clearRow = area.removeFromTop(35).reduced(5);
+    clearAllButton.setBounds(clearRow.removeFromLeft(100));
+
+    // ========================================================================
+    // STATUS ROW
+    // ========================================================================
+    auto statusRow = area.removeFromTop(30).reduced(5);
+    statusLabel.setBounds(statusRow.removeFromLeft(300));
+    extractionStatusLabel.setBounds(statusRow.removeFromLeft(250));
+    applicationStatusLabel.setBounds(statusRow);
+}
+
+void AudioWorkshopEditor::timerCallback() {
+    updateStatus();
+    repaint();
+}
+
+// ========================================================================
+// DRAWING METHODS
+// ========================================================================
+
+void AudioWorkshopEditor::drawSourceWaveform(juce::Graphics& g, const juce::Rectangle<int>& area) {
+    const auto& buffer = processor.getSourceAudio();
+    if (buffer.getNumSamples() == 0) return;
+
+    g.setColour(juce::Colours::lightblue.withAlpha(0.7f));
+
+    const float* data = buffer.getReadPointer(0);
+    int numSamples = buffer.getNumSamples();
+    int step = juce::jmax(1, numSamples / area.getWidth());
+
+    juce::Path path;
+    path.startNewSubPath(area.getX(), area.getCentreY());
+
+    for (int i = 0; i < numSamples; i += step) {
+        float x = area.getX() + (i * area.getWidth() / static_cast<float>(numSamples));
+        float y = area.getCentreY() - (data[i] * area.getHeight() * 0.45f);
+        path.lineTo(x, y);
+    }
+
+    g.strokePath(path, juce::PathStrokeType(1.5f));
+}
+
+void AudioWorkshopEditor::drawTargetWaveform(juce::Graphics& g, const juce::Rectangle<int>& area) {
+    const auto& buffer = processor.getTargetAudio();
+    if (buffer.getNumSamples() == 0) return;
+
+    g.setColour(juce::Colours::lightgreen.withAlpha(0.7f));
+
+    const float* data = buffer.getReadPointer(0);
+    int numSamples = buffer.getNumSamples();
+    int step = juce::jmax(1, numSamples / area.getWidth());
+
+    juce::Path path;
+    path.startNewSubPath(area.getX(), area.getCentreY());
+
+    for (int i = 0; i < numSamples; i += step) {
+        float x = area.getX() + (i * area.getWidth() / static_cast<float>(numSamples));
+        float y = area.getCentreY() - (data[i] * area.getHeight() * 0.45f);
+        path.lineTo(x, y);
+    }
+
+    g.strokePath(path, juce::PathStrokeType(1.5f));
+}
+
+void AudioWorkshopEditor::drawGraphBackground(juce::Graphics& g, const juce::Rectangle<int>& area) {
     g.setColour(juce::Colour(0xff2a2a2a));
     g.fillRect(area);
 
     g.setColour(juce::Colour(0xff444444));
     g.drawRect(area, 2);
 
-    // Grid
+    // Grid lines
     g.setColour(juce::Colour(0xff353535));
     for (int i = 0; i <= 4; ++i) {
         float y = area.getY() + (area.getHeight() * i / 4.0f);
@@ -179,29 +453,7 @@ void AudioBuilderEditor::drawGraphBackground(juce::Graphics& g, const juce::Rect
         static_cast<float>(area.getRight()));
 }
 
-void AudioBuilderEditor::drawWaveform(juce::Graphics& g, const juce::Rectangle<int>& area) {
-    const auto& buffer = processor.getSourceAudio();
-    if (buffer.getNumSamples() == 0) return;
-
-    g.setColour(juce::Colours::grey.withAlpha(0.4f));
-
-    const float* data = buffer.getReadPointer(0);
-    int numSamples = buffer.getNumSamples();
-    int step = juce::jmax(1, numSamples / area.getWidth());
-
-    juce::Path path;
-    path.startNewSubPath(area.getX(), area.getCentreY());
-
-    for (int i = 0; i < numSamples; i += step) {
-        float x = area.getX() + (i * area.getWidth() / static_cast<float>(numSamples));
-        float y = area.getCentreY() - (data[i] * area.getHeight() * 0.4f);
-        path.lineTo(x, y);
-    }
-
-    g.strokePath(path, juce::PathStrokeType(1.5f));
-}
-
-void AudioBuilderEditor::drawBreakpoints(juce::Graphics& g, const juce::Rectangle<int>& area) {
+void AudioWorkshopEditor::drawBreakpoints(juce::Graphics& g, const juce::Rectangle<int>& area) {
     if (displayedBreakpoints.empty()) return;
 
     // Calculate bounds
@@ -263,95 +515,53 @@ void AudioBuilderEditor::drawBreakpoints(juce::Graphics& g, const juce::Rectangl
             g.setColour(juce::Colours::black);
             g.drawEllipse(x - 6, y - 6, 12, 12, 1.5f);
         }
+    }
+}
 
-        // Draw index labels for every 10th point
-        if (i % 10 == 0) {
-            g.setColour(juce::Colours::white);
-            g.setFont(9.0f);
-            g.drawText(juce::String(i), static_cast<int>(x - 15), static_cast<int>(y - 25),
-                30, 15, juce::Justification::centred);
+// ========================================================================
+// MOUSE INTERACTION
+// ========================================================================
+
+void AudioWorkshopEditor::mouseDown(const juce::MouseEvent& event) {
+    if (breakpointGraphBounds.contains(event.getPosition())) {
+        if (event.mods.isLeftButtonDown()) {
+            int index = findBreakpointAtPosition(event.position);
+            if (index >= 0) {
+                draggedBreakpoint.index = index;
+                draggedBreakpoint.dragStartPosition = event.position;
+                isDragging = true;
+            }
+        }
+        else if (event.mods.isRightButtonDown()) {
+            removeBreakpointAtPosition(event.position);
         }
     }
 }
 
-void AudioBuilderEditor::resized() {
-    auto area = getLocalBounds();
-
-    // Skip title
-    area.removeFromTop(50);
-
-    // Control row 1
-    auto controlRow1 = area.removeFromTop(40).reduced(15, 5);
-    loadAudioButton.setBounds(controlRow1.removeFromLeft(100));
-    controlRow1.removeFromLeft(10);
-    loadBreakpointsButton.setBounds(controlRow1.removeFromLeft(150));
-    controlRow1.removeFromLeft(10);
-    applyButton.setBounds(controlRow1.removeFromLeft(80));
-    controlRow1.removeFromLeft(10);
-    exportButton.setBounds(controlRow1.removeFromLeft(100));
-    controlRow1.removeFromLeft(10);
-    clearButton.setBounds(controlRow1.removeFromLeft(70));
-
-    // Control row 2
-    auto controlRow2 = area.removeFromTop(40).reduced(15, 5);
-    featureLabel.setBounds(controlRow2.removeFromLeft(200));
-    controlRow2.removeFromLeft(20);
-    outputLabel.setBounds(controlRow2.removeFromLeft(60));
-    controlRow2.removeFromLeft(5);
-    outputSelector.setBounds(controlRow2.removeFromLeft(150));
-
-    // Control row 3
-    auto controlRow3 = area.removeFromTop(40).reduced(15, 5);
-    intensityLabel.setBounds(controlRow3.removeFromLeft(70));
-    controlRow3.removeFromLeft(5);
-    intensitySlider.setBounds(controlRow3.removeFromLeft(250));
-    controlRow3.removeFromLeft(15);
-    smoothingToggle.setBounds(controlRow3.removeFromLeft(100));
-    controlRow3.removeFromLeft(15);
-    decimateButton.setBounds(controlRow3.removeFromLeft(120));
-    controlRow3.removeFromLeft(10);
-    quantizeToGridButton.setBounds(controlRow3.removeFromLeft(110));
-
-    // Control row 4 - Edit operations
-    auto controlRow4 = area.removeFromTop(40).reduced(15, 5);
-    editOperationLabel.setBounds(controlRow4.removeFromLeft(100));
-    controlRow4.removeFromLeft(5);
-    editOperationSelector.setBounds(controlRow4.removeFromLeft(150));
-    controlRow4.removeFromLeft(10);
-    performEditButton.setBounds(controlRow4.removeFromLeft(110));
-
-    // Control row 5 - Grid settings
-    auto controlRow5 = area.removeFromTop(40).reduced(15, 5);
-    ppqnLabel.setBounds(controlRow5.removeFromLeft(50));
-    controlRow5.removeFromLeft(5);
-    ppqnSelector.setBounds(controlRow5.removeFromLeft(80));
-    controlRow5.removeFromLeft(20);
-    resolutionLabel.setBounds(controlRow5.removeFromLeft(80));
-    controlRow5.removeFromLeft(5);
-    resolutionSelector.setBounds(controlRow5.removeFromLeft(150));
-
-    // Graph area
-    graphBounds = area.removeFromTop(350).reduced(15, 10);
-
-    // Status row
-    auto statusRow = area.removeFromTop(30).reduced(15, 5);
-    infoLabel.setBounds(statusRow.removeFromLeft(500));
-    statusLabel.setBounds(statusRow);
-}
-
-void AudioBuilderEditor::timerCallback() {
-    updateDisplay();
-
-    if (processor.isProcessing()) {
-        float progress = processor.getProcessingProgress();
-        statusLabel.setText("Processing: " + juce::String(static_cast<int>(progress * 100)) + "%",
-            juce::dontSendNotification);
+void AudioWorkshopEditor::mouseDrag(const juce::MouseEvent& event) {
+    if (isDragging && event.mods.isLeftButtonDown()) {
+        updateBreakpointFromDrag(event.position);
     }
-
-    repaint();
 }
 
-bool AudioBuilderEditor::isInterestedInFileDrag(const juce::StringArray& files) {
+void AudioWorkshopEditor::mouseUp(const juce::MouseEvent&) {
+    if (isDragging) {
+        isDragging = false;
+        statusLabel.setText("Breakpoint updated", juce::dontSendNotification);
+    }
+}
+
+void AudioWorkshopEditor::mouseDoubleClick(const juce::MouseEvent& event) {
+    if (breakpointGraphBounds.contains(event.getPosition()) && event.mods.isLeftButtonDown()) {
+        addBreakpointAtPosition(event.position);
+    }
+}
+
+// ========================================================================
+// FILE DRAG AND DROP
+// ========================================================================
+
+bool AudioWorkshopEditor::isInterestedInFileDrag(const juce::StringArray& files) {
     for (const auto& file : files) {
         if (file.endsWithIgnoreCase(".wav") || file.endsWithIgnoreCase(".aif") ||
             file.endsWithIgnoreCase(".aiff") || file.endsWithIgnoreCase(".txt")) {
@@ -361,32 +571,50 @@ bool AudioBuilderEditor::isInterestedInFileDrag(const juce::StringArray& files) 
     return false;
 }
 
-void AudioBuilderEditor::filesDropped(const juce::StringArray& files, int, int) {
+void AudioWorkshopEditor::filesDropped(const juce::StringArray& files, int, int) {
     for (const auto& file : files) {
         if (file.endsWithIgnoreCase(".txt")) {
             if (processor.loadBreakpointFile(juce::File(file))) {
-                featureLabel.setText("Feature: " + processor.getBreakpointFeatureName(),
+                statusLabel.setText("Loaded breakpoints: " + juce::File(file).getFileName(),
                     juce::dontSendNotification);
                 updateOutputSelector();
-                statusLabel.setText("Loaded breakpoints", juce::dontSendNotification);
+                updateBreakpointDisplay();
             }
         }
         else if (file.endsWithIgnoreCase(".wav") || file.endsWithIgnoreCase(".aif") ||
             file.endsWithIgnoreCase(".aiff")) {
-            if (processor.loadAudioFile(juce::File(file))) {
-                infoLabel.setText("Audio: " + juce::File(file).getFileName(),
-                    juce::dontSendNotification);
-                statusLabel.setText("Ready to apply", juce::dontSendNotification);
+            // Ask user if this is source or target
+            // For simplicity, we'll load as source if none exists, otherwise target
+            if (!processor.hasSourceAudio()) {
+                if (processor.loadSourceAudio(juce::File(file))) {
+                    sourceInfoLabel.setText("Source: " + juce::File(file).getFileName(),
+                        juce::dontSendNotification);
+                }
+            }
+            else if (!processor.hasTargetAudio()) {
+                if (processor.loadTargetAudio(juce::File(file))) {
+                    targetInfoLabel.setText("Target: " + juce::File(file).getFileName(),
+                        juce::dontSendNotification);
+                }
             }
         }
-        repaint();
     }
+    repaint();
 }
 
-void AudioBuilderEditor::comboBoxChanged(juce::ComboBox* combo) {
-    if (combo == &outputSelector) {
+// ========================================================================
+// LISTENERS
+// ========================================================================
+
+void AudioWorkshopEditor::comboBoxChanged(juce::ComboBox* combo) {
+    if (combo == &featureSelector) {
+        currentFeature = featureSelector.getText();
+        updateOutputSelector();
+        updateBreakpointDisplay();
+    }
+    else if (combo == &outputSelector) {
         currentOutput = outputSelector.getSelectedId() - 1;
-        updateDisplay();
+        updateBreakpointDisplay();
     }
     else if (combo == &ppqnSelector) {
         int ppqnValues[] = { 24, 48, 96, 192, 384, 480, 960 };
@@ -413,44 +641,70 @@ void AudioBuilderEditor::comboBoxChanged(juce::ComboBox* combo) {
     }
 }
 
-void AudioBuilderEditor::buttonClicked(juce::Button* button) {
-    if (button == &loadAudioButton) {
-        loadAudioFile();
+void AudioWorkshopEditor::buttonClicked(juce::Button* button) {
+    if (button == &loadSourceButton) {
+        loadSourceAudio();
+    }
+    else if (button == &loadTargetButton) {
+        loadTargetAudio();
     }
     else if (button == &loadBreakpointsButton) {
         loadBreakpointFile();
     }
-    else if (button == &applyButton) {
-        applyBreakpoints();
+    else if (button == &extractButton) {
+        extractSelectedFeature();
     }
-    else if (button == &exportButton) {
-        exportAudio();
+    else if (button == &extractAllButton) {
+        extractAllFeatures();
     }
-    else if (button == &clearButton) {
-        clearAll();
+    else if (button == &extractADSREnvelopeButton) {
+        extractADSRFromAmplitude();
     }
-    else if (button == &decimateButton) {
-        decimateCurrentBreakpoints();
+    else if (button == &reducePointsButton) {
+        if (!currentFeature.isEmpty()) {
+            int currentCount = processor.getCurrentBreakpointCount(currentFeature, currentOutput);
+            int targetPoints = currentCount / 2;
+            if (targetPoints < 10) targetPoints = 10;
+
+            processor.decimateBreakpoints(currentFeature, currentOutput, targetPoints);
+            updateBreakpointDisplay();
+            statusLabel.setText("Reduced to " + juce::String(targetPoints) + " points",
+                juce::dontSendNotification);
+        }
     }
     else if (button == &quantizeToGridButton) {
         quantizeBreakpointsToGrid();
     }
+    else if (button == &applyButton) {
+        applyBreakpointsToTarget();
+    }
+    else if (button == &exportBreakpointsButton) {
+        exportCurrentBreakpoints();
+    }
+    else if (button == &exportAudioButton) {
+        exportProcessedAudio();
+    }
     else if (button == &performEditButton) {
         performSelectedEdit();
     }
-}
-
-void AudioBuilderEditor::sliderValueChanged(juce::Slider* slider) {
-    if (slider == &intensitySlider) {
-        // Intensity parameter is connected to processor.params
+    else if (button == &clearAllButton) {
+        clearAll();
     }
 }
 
-void AudioBuilderEditor::loadAudioFile() {
+void AudioWorkshopEditor::sliderValueChanged(juce::Slider* slider) {
+    // Parameters are automatically updated through AudioProcessorValueTreeState
+}
+
+// ========================================================================
+// UI ACTION METHODS
+// ========================================================================
+
+void AudioWorkshopEditor::loadSourceAudio() {
     fileChooser = std::make_unique<juce::FileChooser>(
-        "Load Audio File",
+        "Load Source Audio",
         juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
-        "*.wav;*.aif;*.aiff"
+        "*.wav;*.aif;*.aiff;*.mp3;*.flac"
     );
 
     fileChooser->launchAsync(juce::FileBrowserComponent::openMode |
@@ -458,17 +712,41 @@ void AudioBuilderEditor::loadAudioFile() {
         [this](const juce::FileChooser& chooser) {
             auto result = chooser.getResult();
             if (result.existsAsFile()) {
-                if (processor.loadAudioFile(result)) {
-                    infoLabel.setText("Audio: " + result.getFileName(),
+                if (processor.loadSourceAudio(result)) {
+                    sourceInfoLabel.setText("Source: " + result.getFileName(),
                         juce::dontSendNotification);
-                    statusLabel.setText("Ready to apply", juce::dontSendNotification);
+                    statusLabel.setText("Ready to extract features",
+                        juce::dontSendNotification);
                     repaint();
                 }
             }
         });
 }
 
-void AudioBuilderEditor::loadBreakpointFile() {
+void AudioWorkshopEditor::loadTargetAudio() {
+    fileChooser = std::make_unique<juce::FileChooser>(
+        "Load Target Audio",
+        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+        "*.wav;*.aif;*.aiff;*.mp3;*.flac"
+    );
+
+    fileChooser->launchAsync(juce::FileBrowserComponent::openMode |
+        juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& chooser) {
+            auto result = chooser.getResult();
+            if (result.existsAsFile()) {
+                if (processor.loadTargetAudio(result)) {
+                    targetInfoLabel.setText("Target: " + result.getFileName(),
+                        juce::dontSendNotification);
+                    statusLabel.setText("Ready to apply breakpoints",
+                        juce::dontSendNotification);
+                    repaint();
+                }
+            }
+        });
+}
+
+void AudioWorkshopEditor::loadBreakpointFile() {
     fileChooser = std::make_unique<juce::FileChooser>(
         "Load Breakpoint File",
         juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
@@ -481,37 +759,171 @@ void AudioBuilderEditor::loadBreakpointFile() {
             auto result = chooser.getResult();
             if (result.existsAsFile()) {
                 if (processor.loadBreakpointFile(result)) {
-                    featureLabel.setText("Feature: " + processor.getBreakpointFeatureName(),
-                        juce::dontSendNotification);
-                    updateOutputSelector();
-                    updateDisplay();
                     statusLabel.setText("Loaded breakpoints: " + result.getFileName(),
                         juce::dontSendNotification);
+                    updateOutputSelector();
+                    updateBreakpointDisplay();
                 }
             }
         });
 }
 
-void AudioBuilderEditor::applyBreakpoints() {
-    if (!processor.hasLoadedAudio()) {
-        statusLabel.setText("Load audio first", juce::dontSendNotification);
+void AudioWorkshopEditor::extractSelectedFeature() {
+    if (!processor.hasSourceAudio()) {
+        statusLabel.setText("Load source audio first", juce::dontSendNotification);
         return;
     }
+
+    juce::String feature = featureSelector.getText();
+    processor.extractFeature(feature, 0);
+
+    currentFeature = feature;
+    updateOutputSelector();
+    updateBreakpointDisplay();
+
+    statusLabel.setText("Extracted: " + feature, juce::dontSendNotification);
+}
+
+void AudioWorkshopEditor::extractAllFeatures() {
+    if (!processor.hasSourceAudio()) {
+        statusLabel.setText("Load source audio first", juce::dontSendNotification);
+        return;
+    }
+
+    processor.extractAllFeatures();
+
+    currentFeature = "Amplitude"; // Default to first feature
+    updateOutputSelector();
+    updateBreakpointDisplay();
+
+    statusLabel.setText("Extracted all features", juce::dontSendNotification);
+}
+
+void AudioWorkshopEditor::extractADSRFromAmplitude() {
+    if (!processor.hasSourceAudio()) {
+        statusLabel.setText("Load source audio first", juce::dontSendNotification);
+        return;
+    }
+
+    processor.extractADSRFromAmplitude();
+
+    currentFeature = "ADSR Envelope";
+    updateOutputSelector();
+    updateBreakpointDisplay();
+
+    statusLabel.setText("Extracted ADSR envelope", juce::dontSendNotification);
+}
+
+void AudioWorkshopEditor::updateBreakpointDisplay() {
+    displayedBreakpoints.clear();
+
+    if (!currentFeature.isEmpty()) {
+        auto points = processor.getBreakpointsForDisplay(currentFeature, currentOutput);
+        for (const auto& p : points) {
+            displayedBreakpoints.push_back({ static_cast<float>(p.first),
+                                            static_cast<float>(p.second) });
+        }
+
+        breakpointCountLabel.setText("Points: " + juce::String(points.size()),
+            juce::dontSendNotification);
+    }
+    else {
+        breakpointCountLabel.setText("Points: 0", juce::dontSendNotification);
+    }
+}
+
+void AudioWorkshopEditor::updateOutputSelector() {
+    outputSelector.clear();
+
+    if (!currentFeature.isEmpty()) {
+        int numOutputs = processor.getNumOutputsForFeature(currentFeature);
+        for (int i = 0; i < numOutputs; ++i) {
+            outputSelector.addItem(processor.getOutputName(currentFeature, i), i + 1);
+        }
+
+        if (numOutputs > 0) {
+            currentOutput = 0;
+            outputSelector.setSelectedId(1, juce::dontSendNotification);
+        }
+    }
+
+    updateBreakpointDisplay();
+}
+
+void AudioWorkshopEditor::quantizeBreakpointsToGrid() {
+    if (currentFeature.isEmpty()) {
+        statusLabel.setText("Extract a feature first", juce::dontSendNotification);
+        return;
+    }
+
+    processor.quantizeBreakpointsToGrid(currentFeature, currentOutput);
+
+    updateBreakpointDisplay();
+    statusLabel.setText(
+        "Quantized to " + juce::String(processor.getTimeGridPPQN()) + " PPQN",
+        juce::dontSendNotification
+    );
+}
+
+void AudioWorkshopEditor::applyBreakpointsToTarget() {
+    if (!processor.hasTargetAudio()) {
+        statusLabel.setText("Load target audio first", juce::dontSendNotification);
+        return;
+    }
+
     if (!processor.hasBreakpoints()) {
-        statusLabel.setText("Load breakpoints first", juce::dontSendNotification);
+        statusLabel.setText("Extract or load breakpoints first", juce::dontSendNotification);
         return;
     }
 
     statusLabel.setText("Applying breakpoints...", juce::dontSendNotification);
-    processor.applyBreakpointsToAudio();
+    processor.applyBreakpointsToTarget();
     statusLabel.setText("Applied! Ready to export", juce::dontSendNotification);
 }
 
-void AudioBuilderEditor::exportAudio() {
+void AudioWorkshopEditor::exportCurrentBreakpoints() {
+    if (currentFeature.isEmpty() || !processor.hasBreakpoints()) {
+        statusLabel.setText("No breakpoints to export", juce::dontSendNotification);
+        return;
+    }
+
+    juce::String defaultName = processor.hasSourceAudio() ?
+        processor.getSourceFileName() + "_" + currentFeature + ".txt" :
+        currentFeature + "_breakpoints.txt";
+
+    fileChooser = std::make_unique<juce::FileChooser>(
+        "Export Breakpoints",
+        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+        .getChildFile(defaultName),
+        "*.txt"
+    );
+
+    fileChooser->launchAsync(juce::FileBrowserComponent::saveMode |
+        juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& chooser) {
+            auto result = chooser.getResult();
+            if (result.getFullPathName().isNotEmpty()) {
+                processor.saveBreakpoints(currentFeature, result);
+                statusLabel.setText("Exported: " + result.getFileName(),
+                    juce::dontSendNotification);
+            }
+        });
+}
+
+void AudioWorkshopEditor::exportProcessedAudio() {
+    if (!processor.hasTargetAudio()) {
+        statusLabel.setText("No processed audio to export", juce::dontSendNotification);
+        return;
+    }
+
+    juce::String defaultName = processor.hasTargetAudio() ?
+        processor.getTargetFileName() + "_processed.wav" :
+        "processed_audio.wav";
+
     fileChooser = std::make_unique<juce::FileChooser>(
         "Export Processed Audio",
         juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
-        .getChildFile(processor.getLoadedFileName() + "_processed.wav"),
+        .getChildFile(defaultName),
         "*.wav"
     );
 
@@ -527,60 +939,105 @@ void AudioBuilderEditor::exportAudio() {
         });
 }
 
-void AudioBuilderEditor::clearAll() {
-    processor.clearLoadedAudio();
-    processor.clearBreakpoints();
-    displayedBreakpoints.clear();
-    updateOutputSelector();
-    featureLabel.setText("Feature: None", juce::dontSendNotification);
-    infoLabel.setText("Load audio and breakpoint files to begin", juce::dontSendNotification);
-    statusLabel.setText("Ready", juce::dontSendNotification);
-    repaint();
-}
-
-void AudioBuilderEditor::decimateCurrentBreakpoints() {
-    int currentCount = processor.getCurrentBreakpointCount(currentOutput);
-    if (currentCount == 0) {
-        statusLabel.setText("No breakpoints to reduce", juce::dontSendNotification);
+void AudioWorkshopEditor::performSelectedEdit() {
+    if (!processor.hasTargetAudio()) {
+        statusLabel.setText("Load target audio first", juce::dontSendNotification);
         return;
     }
 
-    int targetPoints = currentCount / 2;
-    if (targetPoints < 10) targetPoints = 10;
+    int selectedOp = editOperationSelector.getSelectedId();
+    AudioWorkshopProcessor::EditOperation op;
+    std::vector<double> params;
 
-    processor.decimateBreakpoints(currentOutput, targetPoints);
-    updateDisplay();
-    statusLabel.setText("Reduced to " + juce::String(targetPoints) + " points",
-        juce::dontSendNotification);
+    switch (selectedOp) {
+    case 1: // Remove Silence
+        op = AudioWorkshopProcessor::EditOperation::RemoveSilence;
+        params = { -40.0 }; // -40dB threshold
+        break;
+
+    case 2: // Split by Beats
+        op = AudioWorkshopProcessor::EditOperation::SplitByBeats;
+        break;
+
+    case 3: // Isolate Transients
+        op = AudioWorkshopProcessor::EditOperation::IsolateTransients;
+        params = { 0.5 }; // Sensitivity
+        break;
+
+    case 4: // Time Stretch
+        op = AudioWorkshopProcessor::EditOperation::TimeStretch;
+        params = { 1.5 }; // 1.5x slower
+        break;
+
+    case 5: // Quantize Audio
+        op = AudioWorkshopProcessor::EditOperation::Quantize;
+        params = { 0.0 }; // Start time
+        break;
+
+    case 6: // Humanize
+        op = AudioWorkshopProcessor::EditOperation::Humanize;
+        params = { 0.1 }; // Humanize amount
+        break;
+
+    default:
+        return;
+    }
+
+    auto result = processor.performEditOperation(op, params);
+
+    if (result.getNumSamples() > 0) {
+        statusLabel.setText("Edit completed: " + editOperationSelector.getText(),
+            juce::dontSendNotification);
+    }
+    else {
+        statusLabel.setText("Edit operation had no effect", juce::dontSendNotification);
+    }
+
+    repaint();
 }
 
-void AudioBuilderEditor::updateDisplay() {
+void AudioWorkshopEditor::clearAll() {
+    processor.clearSourceAudio();
+    processor.clearTargetAudio();
+    processor.clearBreakpoints();
     displayedBreakpoints.clear();
 
-    auto points = processor.getBreakpointsForDisplay(currentOutput);
-    for (const auto& p : points) {
-        displayedBreakpoints.push_back({ static_cast<float>(p.first),
-                                        static_cast<float>(p.second) });
+    sourceInfoLabel.setText("Source: None", juce::dontSendNotification);
+    targetInfoLabel.setText("Target: None", juce::dontSendNotification);
+    breakpointCountLabel.setText("Points: 0", juce::dontSendNotification);
+    statusLabel.setText("Ready", juce::dontSendNotification);
+    extractionStatusLabel.setText("No features extracted", juce::dontSendNotification);
+    applicationStatusLabel.setText("No audio processed", juce::dontSendNotification);
+
+    repaint();
+}
+
+void AudioWorkshopEditor::updateStatus() {
+    // Update extraction status
+    auto extractedFeatures = processor.getExtractedFeatures();
+    if (!extractedFeatures.isEmpty()) {
+        extractionStatusLabel.setText("Extracted: " + extractedFeatures.joinIntoString(", "),
+            juce::dontSendNotification);
+    }
+    else {
+        extractionStatusLabel.setText("No features extracted", juce::dontSendNotification);
+    }
+
+    // Update application status
+    if (processor.hasTargetAudio()) {
+        applicationStatusLabel.setText("Target loaded: " + processor.getTargetFileName(),
+            juce::dontSendNotification);
+    }
+    else {
+        applicationStatusLabel.setText("No audio processed", juce::dontSendNotification);
     }
 }
 
-void AudioBuilderEditor::updateOutputSelector() {
-    outputSelector.clear();
+// ========================================================================
+// MOUSE INTERACTION HELPER METHODS
+// ========================================================================
 
-    auto outputs = processor.getAvailableOutputs();
-    for (int i = 0; i < outputs.size(); ++i) {
-        outputSelector.addItem(outputs[i], i + 1);
-    }
-
-    if (outputs.size() > 0) {
-        currentOutput = 0;
-        outputSelector.setSelectedId(1, juce::dontSendNotification);
-    }
-
-    updateDisplay();
-}
-
-int AudioBuilderEditor::findBreakpointAtPosition(juce::Point<float> position, float tolerance) {
+int AudioWorkshopEditor::findBreakpointAtPosition(juce::Point<float> position, float tolerance) {
     if (displayedBreakpoints.empty()) return -1;
 
     float maxTime = 0.0f;
@@ -599,9 +1056,9 @@ int AudioBuilderEditor::findBreakpointAtPosition(juce::Point<float> position, fl
 
     for (size_t i = 0; i < displayedBreakpoints.size(); ++i) {
         const auto& [time, value] = displayedBreakpoints[i];
-        float x = graphBounds.getX() + (time / maxTime) * graphBounds.getWidth();
+        float x = breakpointGraphBounds.getX() + (time / maxTime) * breakpointGraphBounds.getWidth();
         float normalizedValue = (value - minValue) / valueRange;
-        float y = graphBounds.getY() + graphBounds.getHeight() * (1.0f - normalizedValue);
+        float y = breakpointGraphBounds.getY() + breakpointGraphBounds.getHeight() * (1.0f - normalizedValue);
 
         if (std::abs(x - position.x) <= tolerance && std::abs(y - position.y) <= tolerance) {
             return static_cast<int>(i);
@@ -610,7 +1067,7 @@ int AudioBuilderEditor::findBreakpointAtPosition(juce::Point<float> position, fl
     return -1;
 }
 
-juce::Point<float> AudioBuilderEditor::timeValueToScreen(float time, float value) {
+juce::Point<float> AudioWorkshopEditor::timeValueToScreen(float time, float value) {
     float maxTime = 1.0f;
     float minValue = 1e10f;
     float maxValue = -1e10f;
@@ -625,14 +1082,14 @@ juce::Point<float> AudioBuilderEditor::timeValueToScreen(float time, float value
     float valueRange = maxValue - minValue;
     if (valueRange < 0.001f) valueRange = 1.0f;
 
-    float x = graphBounds.getX() + (time / maxTime) * graphBounds.getWidth();
+    float x = breakpointGraphBounds.getX() + (time / maxTime) * breakpointGraphBounds.getWidth();
     float normalizedValue = (value - minValue) / valueRange;
-    float y = graphBounds.getY() + graphBounds.getHeight() * (1.0f - normalizedValue);
+    float y = breakpointGraphBounds.getY() + breakpointGraphBounds.getHeight() * (1.0f - normalizedValue);
 
     return { x, y };
 }
 
-std::pair<float, float> AudioBuilderEditor::screenToTimeValue(juce::Point<float> screenPos) {
+std::pair<float, float> AudioWorkshopEditor::screenToTimeValue(juce::Point<float> screenPos) {
     float maxTime = 1.0f;
     float minValue = 1e10f;
     float maxValue = -1e10f;
@@ -647,168 +1104,37 @@ std::pair<float, float> AudioBuilderEditor::screenToTimeValue(juce::Point<float>
     float valueRange = maxValue - minValue;
     if (valueRange < 0.001f) valueRange = 1.0f;
 
-    float time = ((screenPos.x - graphBounds.getX()) / graphBounds.getWidth()) * maxTime;
-    float normalizedValue = 1.0f - ((screenPos.y - graphBounds.getY()) / graphBounds.getHeight());
+    float time = ((screenPos.x - breakpointGraphBounds.getX()) / breakpointGraphBounds.getWidth()) * maxTime;
+    float normalizedValue = 1.0f - ((screenPos.y - breakpointGraphBounds.getY()) / breakpointGraphBounds.getHeight());
     float value = minValue + normalizedValue * valueRange;
 
     return { juce::jmax(0.0f, time), value };
 }
 
-void AudioBuilderEditor::updateBreakpointFromDrag(juce::Point<float> currentPosition) {
+void AudioWorkshopEditor::updateBreakpointFromDrag(juce::Point<float> currentPosition) {
     if (draggedBreakpoint.index >= 0) {
         auto [newTime, newValue] = screenToTimeValue(currentPosition);
-        processor.updateBreakpoint(currentOutput, draggedBreakpoint.index, newTime, newValue);
-        updateDisplay();
+        processor.updateBreakpoint(currentFeature, currentOutput, draggedBreakpoint.index, newTime, newValue);
+        updateBreakpointDisplay();
     }
 }
 
-void AudioBuilderEditor::addBreakpointAtPosition(juce::Point<float> position) {
-    if (graphBounds.contains(position.toInt())) {
+void AudioWorkshopEditor::addBreakpointAtPosition(juce::Point<float> position) {
+    if (breakpointGraphBounds.contains(position.toInt())) {
         auto [time, value] = screenToTimeValue(position);
-        processor.addBreakpoint(currentOutput, time, value);
-        updateDisplay();
+        processor.addBreakpoint(currentFeature, currentOutput, time, value);
+        updateBreakpointDisplay();
         statusLabel.setText("Added breakpoint at " + juce::String(time, 2) + "s",
             juce::dontSendNotification);
     }
 }
 
-void AudioBuilderEditor::removeBreakpointAtPosition(juce::Point<float> position) {
+void AudioWorkshopEditor::removeBreakpointAtPosition(juce::Point<float> position) {
     int index = findBreakpointAtPosition(position);
     if (index >= 0) {
-        processor.removeBreakpoint(currentOutput, index);
-        updateDisplay();
+        processor.removeBreakpoint(currentFeature, currentOutput, index);
+        updateBreakpointDisplay();
         statusLabel.setText("Removed breakpoint " + juce::String(index),
             juce::dontSendNotification);
     }
-}
-
-void AudioBuilderEditor::mouseDown(const juce::MouseEvent& event) {
-    if (graphBounds.contains(event.getPosition())) {
-        if (event.mods.isLeftButtonDown()) {
-            int index = findBreakpointAtPosition(event.position);
-            if (index >= 0) {
-                draggedBreakpoint.index = index;
-                draggedBreakpoint.dragStartPosition = event.position;
-                isDragging = true;
-            }
-        }
-        else if (event.mods.isRightButtonDown()) {
-            removeBreakpointAtPosition(event.position);
-        }
-    }
-}
-
-void AudioBuilderEditor::mouseDrag(const juce::MouseEvent& event) {
-    if (isDragging && event.mods.isLeftButtonDown()) {
-        updateBreakpointFromDrag(event.position);
-    }
-}
-
-void AudioBuilderEditor::mouseUp(const juce::MouseEvent&) {
-    if (isDragging) {
-        isDragging = false;
-        statusLabel.setText("Breakpoint updated", juce::dontSendNotification);
-    }
-}
-
-void AudioBuilderEditor::mouseDoubleClick(const juce::MouseEvent& event) {
-    if (graphBounds.contains(event.getPosition()) && event.mods.isLeftButtonDown()) {
-        addBreakpointAtPosition(event.position);
-    }
-}
-
-void AudioBuilderEditor::quantizeBreakpointsToGrid() {
-    if (!processor.hasBreakpoints()) {
-        statusLabel.setText("Load breakpoints first", juce::dontSendNotification);
-        return;
-    }
-
-    // Use the processor's edit operation system
-    std::vector<double> params = { 0.0 }; // Placeholder
-    processor.performEditOperation(AudioBuilderProcessor::EditOperation::SnapToGrid, params);
-
-    updateDisplay();
-    statusLabel.setText("Breakpoints snapped to " + juce::String(processor.getTimeGridPPQN()) + " PPQN grid",
-        juce::dontSendNotification);
-}
-
-void AudioBuilderEditor::performSelectedEdit() {
-    if (!processor.hasLoadedAudio()) {
-        statusLabel.setText("Load audio first", juce::dontSendNotification);
-        return;
-    }
-
-    int selectedOp = editOperationSelector.getSelectedId();
-    AudioBuilderProcessor::EditOperation op = AudioBuilderProcessor::EditOperation::None;
-    std::vector<double> params;
-
-    // Map selection to operation
-    switch (selectedOp) {
-    case 1: // Trim
-        op = AudioBuilderProcessor::EditOperation::Trim;
-        // Example: trim first and last 1 second
-        params = { 1.0, processor.getSourceAudio().getNumSamples() / processor.getLoadedSampleRate() - 1.0 };
-        break;
-
-    case 2: // Cut
-        op = AudioBuilderProcessor::EditOperation::Cut;
-        // Example: cut middle section
-        params = { 2.0, 4.0 };
-        break;
-
-    case 3: // Split
-        op = AudioBuilderProcessor::EditOperation::Split;
-        // Example: split at 2-second intervals
-        for (double t = 2.0; t < processor.getSourceAudio().getNumSamples() / processor.getLoadedSampleRate(); t += 2.0) {
-            params.push_back(t);
-        }
-        break;
-
-    case 4: // Nudge Forward
-        op = AudioBuilderProcessor::EditOperation::Nudge;
-        params = { 0.1 }; // 100ms forward
-        break;
-
-    case 5: // Nudge Backward
-        op = AudioBuilderProcessor::EditOperation::Nudge;
-        params = { -0.1 }; // 100ms backward
-        break;
-
-    case 6: // Time Stretch
-        op = AudioBuilderProcessor::EditOperation::TimeStretch;
-        params = { 1.5 }; // 1.5x slower
-        break;
-
-    case 7: // Quantize to Grid
-        op = AudioBuilderProcessor::EditOperation::Quantize;
-        params = { 0.0 }; // Start at beginning
-        break;
-
-    case 8: // Humanize
-        op = AudioBuilderProcessor::EditOperation::Humanize;
-        params = { 0.0 };
-        break;
-
-    case 9: // Detect Beats
-        op = AudioBuilderProcessor::EditOperation::DetectBeats;
-        break;
-
-    case 10: // Snap Breakpoints
-        op = AudioBuilderProcessor::EditOperation::SnapToGrid;
-        break;
-    }
-
-    auto result = processor.performEditOperation(op, params);
-
-    if (result.getNumSamples() > 0) {
-        // Update processor's audio with result
-        // For now, just show success message
-        statusLabel.setText("Edit operation completed: " + editOperationSelector.getText(),
-            juce::dontSendNotification);
-    }
-    else {
-        statusLabel.setText("Edit operation had no effect", juce::dontSendNotification);
-    }
-
-    repaint();
 }
