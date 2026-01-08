@@ -1,3 +1,11 @@
+Update January 8th 2025 - I've merged deconstructor and builder into "Workshop" the idea is to allow both analysis and extraction of audio characteristics as well as the ability to apply them all in the same app/plugin.  Things are still very experimental and I need to implement the edit functions. The idea overall is to make a special editing tool that may be able to pull data from wav files that that normally
+may not be played with still very primitive but I have an idea for it in my head. For example edit wave file based on its characteristics or apply characteristics of one wave file on another, as well as perform
+edit functions but editor is still not really built out. 
+
+
+
+
+------------------------- 
 I've started to try to add "snapping" via creation of a lower needs timeing grid. There are still a few question in my head specifically how I want to handle possible dataloss etc.. in my head this was more of a dither recognition issue but I havn't really tested it out pratically yet.
 
 AUDIOBUILDERTIME.vst3  is the current source, I've kept the old source for AudioBuilder.vst the a little more basic version that only used breakpoints at very high resolutions. All the functions have not been implemented yet but the new plugin does load, it is being tested and likely still buggy. 
